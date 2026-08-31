@@ -44,6 +44,8 @@ var Cell = /** @class */ (function () {
         });
         var inputPorts = ports.filter(function (port) { return port.keyIn(templateInputPids); });
         var outputPorts = ports.filter(function (port) { return port.keyIn(templateOutputPids); });
+        // this triggers when there is a lateral port, 
+        // or when the skin template doesn't match the yosys cell type (shouldn't happen)
         if (inputPorts.length + outputPorts.length !== ports.length) {
             var inputPids_1 = YosysModel_1.default.getInputPortPids(yCell);
             var outputPids_1 = YosysModel_1.default.getOutputPortPids(yCell);
@@ -128,6 +130,13 @@ var Cell = /** @class */ (function () {
         enumerable: false,
         configurable: true
     });
+    Object.defineProperty(Cell.prototype, "Attributes", {
+        get: function () {
+            return this.attributes;
+        },
+        enumerable: false,
+        configurable: true
+    });
     Cell.prototype.maxOutVal = function (atLeast) {
         var maxVal = _.max(this.outputPorts.map(function (op) { return op.maxVal(); }));
         return _.max([maxVal, atLeast]);
@@ -207,10 +216,12 @@ var Cell = /** @class */ (function () {
             var outPorts = this.outputPorts.map(function (op, i) {
                 return op.getGenericElkPort(i, outTemplates_1, 'out');
             });
+            var width = Number(this.getGenericWidth());
+            var height = Number(this.getGenericHeight());
             var cell = {
                 id: this.key,
-                width: Number(template[1]['s:width']),
-                height: Number(this.getGenericHeight()),
+                width: width,
+                height: height,
                 ports: inPorts.concat(outPorts),
                 layoutOptions: layoutAttrs,
                 labels: [],
@@ -272,8 +283,8 @@ var Cell = /** @class */ (function () {
         tempclone[1].id = 'cell_' + this.key;
         tempclone[1].transform = 'translate(' + cell.x + ',' + cell.y + ')';
         if (this.type === '$_split_') {
-            setGenericSize(tempclone, Number(this.getGenericHeight()));
-            var outPorts_1 = Skin_1.default.getPortsWithPrefix(template, 'out');
+            setGenericSize(tempclone, this.getGenericWidth(), this.getGenericHeight());
+            var outPorts_1 = Skin_1.default.getPortsWithPrefix(tempclone, 'out');
             var gap_1 = Number(outPorts_1[1][1]['s:y']) - Number(outPorts_1[0][1]['s:y']);
             var startY_1 = Number(outPorts_1[0][1]['s:y']);
             tempclone.pop();
@@ -287,8 +298,8 @@ var Cell = /** @class */ (function () {
             });
         }
         else if (this.type === '$_join_') {
-            setGenericSize(tempclone, Number(this.getGenericHeight()));
-            var inPorts_1 = Skin_1.default.getPortsWithPrefix(template, 'in');
+            setGenericSize(tempclone, this.getGenericWidth(), this.getGenericHeight());
+            var inPorts_1 = Skin_1.default.getPortsWithPrefix(tempclone, 'in');
             var gap_2 = Number(inPorts_1[1][1]['s:y']) - Number(inPorts_1[0][1]['s:y']);
             var startY_2 = Number(inPorts_1[0][1]['s:y']);
             tempclone.pop();
@@ -302,13 +313,14 @@ var Cell = /** @class */ (function () {
             });
         }
         else if (template[1]['s:type'] === 'generic') {
-            setGenericSize(tempclone, Number(this.getGenericHeight()));
-            var inPorts_2 = Skin_1.default.getPortsWithPrefix(template, 'in');
+            setGenericSize(tempclone, this.getGenericWidth(), this.getGenericHeight());
+            var inPorts_2 = Skin_1.default.getPortsWithPrefix(tempclone, 'in');
             var ingap_1 = Number(inPorts_2[1][1]['s:y']) - Number(inPorts_2[0][1]['s:y']);
             var instartY_1 = Number(inPorts_2[0][1]['s:y']);
-            var outPorts_2 = Skin_1.default.getPortsWithPrefix(template, 'out');
+            var outPorts_2 = Skin_1.default.getPortsWithPrefix(tempclone, 'out');
             var outgap_1 = Number(outPorts_2[1][1]['s:y']) - Number(outPorts_2[0][1]['s:y']);
             var outstartY_1 = Number(outPorts_2[0][1]['s:y']);
+            // pops template ports
             tempclone.pop();
             tempclone.pop();
             tempclone.pop();
@@ -329,16 +341,36 @@ var Cell = /** @class */ (function () {
                 portClone[1].id = 'port_' + port.parentNode.Key + '~' + port.Key;
                 tempclone.push(portClone);
             });
-            // first child of generic must be a text node.
-            tempclone[2][2] = this.type;
         }
         setClass(tempclone, '$cell_id', 'cell_' + this.key);
         return tempclone;
+    };
+    Cell.prototype.svgTextToElkBox = function (textX, textY, textAnchor, dominantBaseline, text, ifGeneric) {
+        if (ifGeneric === void 0) { ifGeneric = false; }
+        var w = Skin_1.default.getFontCharWidth() * text.length;
+        var h = Skin_1.default.getFontCharHeight();
+        // if generic, the anchor is always in the center
+        var elkAnchorX = ifGeneric ? this.getGenericWidth() / 2 : textX;
+        var elkAnchorY = ifGeneric ? this.getGenericHeight() / 2 : textY;
+        if (textAnchor === 'middle') {
+            elkAnchorX = elkAnchorX - w / 2;
+        }
+        else if (textAnchor === 'end') {
+            elkAnchorX = elkAnchorX - w;
+        }
+        if (dominantBaseline === 'middle') {
+            elkAnchorY = elkAnchorY - h / 2;
+        }
+        else if (dominantBaseline === 'alphabetic' || dominantBaseline === 'auto') {
+            elkAnchorY = elkAnchorY - h;
+        }
+        return { x: elkAnchorX, y: elkAnchorY, width: w, height: h };
     };
     Cell.prototype.addLabels = function (template, cell) {
         var _this = this;
         onml.traverse(template, {
             enter: function (node) {
+                var _a, _b;
                 if (node.name === 'text' && node.attr['s:attribute']) {
                     var attrName = node.attr['s:attribute'];
                     var newString = void 0;
@@ -358,13 +390,20 @@ var Cell = /** @class */ (function () {
                     else {
                         return;
                     }
+                    var textX = Number(node.attr.x);
+                    var textY = Number(node.attr.y);
+                    var textAnchor = (_a = node.attr['text-anchor']) !== null && _a !== void 0 ? _a : 'start';
+                    var dominantBaseline = (_b = node.attr['dominant-baseline']) !== null && _b !== void 0 ? _b : 'auto';
+                    var ifGeneric = template[1]['s:type'] === 'generic';
+                    var _c = _this.svgTextToElkBox(textX, textY, textAnchor, dominantBaseline, newString, ifGeneric), x = _c.x, y = _c.y, width = _c.width, height = _c.height;
+                    // const boxTop = Number(node.attr.y) - 8;
                     cell.labels.push({
                         id: _this.key + '.label.' + attrName,
                         text: newString,
-                        x: node.attr.x,
-                        y: node.attr.y - 6,
-                        height: 11,
-                        width: (6 * newString.length),
+                        x: x,
+                        y: y,
+                        width: width,
+                        height: height,
                     });
                 }
             },
@@ -374,24 +413,52 @@ var Cell = /** @class */ (function () {
         var template = this.getTemplate();
         var inPorts = Skin_1.default.getPortsWithPrefix(template, 'in');
         var outPorts = Skin_1.default.getPortsWithPrefix(template, 'out');
-        if (this.inputPorts.length > this.outputPorts.length) {
+        var baseHeight = Number(template[1]['s:height']);
+        // Vertical pin pitch comes from the skin's two in-/out- exemplars;
+        // growth is driven by the CELL's pin count, never below baseHeight.
+        if (this.inputPorts.length > this.outputPorts.length && this.inputPorts.length > 1) {
             var gap = Number(inPorts[1][1]['s:y']) - Number(inPorts[0][1]['s:y']);
-            return Number(template[1]['s:height']) + gap * (this.inputPorts.length - 2);
+            return baseHeight + gap * Math.max(0, this.inputPorts.length - 2);
         }
-        if (outPorts.length > 1) {
+        if (this.outputPorts.length > 1) {
             var gap = Number(outPorts[1][1]['s:y']) - Number(outPorts[0][1]['s:y']);
-            return Number(template[1]['s:height']) + gap * (this.outputPorts.length - 2);
+            return baseHeight + gap * Math.max(0, this.outputPorts.length - 2);
         }
-        return Number(template[1]['s:height']);
+        return baseHeight;
+    };
+    Cell.prototype.getGenericWidth = function () {
+        var _a, _b;
+        var template = this.getTemplate();
+        var margin = 10;
+        var baseWidth = Number(template[1]['s:width']);
+        // The body must be at least as wide as its longest label.
+        var charW = Skin_1.default.getFontCharWidth();
+        var valueAdjustedWidth = charW * ((_b = (_a = this.getValueAttribute()) === null || _a === void 0 ? void 0 : _a.length) !== null && _b !== void 0 ? _b : 0);
+        var refAdjustedWidth = charW * this.Key.length;
+        return Math.max(refAdjustedWidth, valueAdjustedWidth, baseWidth) + margin;
     };
     return Cell;
 }());
 exports.default = Cell;
-function setGenericSize(tempclone, height) {
+function setGenericSize(tempclone, width, height) {
     onml.traverse(tempclone, {
         enter: function (node) {
+            // set the body to the new width and height
             if (node.name === 'rect' && node.attr['s:generic'] === 'body') {
+                node.attr.width = width;
                 node.attr.height = height;
+            }
+            // change port positions to match the new width
+            if (node.name === 'g' &&
+                (node.attr['s:position'] === 'right' ||
+                    Number(node.attr['s:x']) > 0)) {
+                node.attr["s:x"] = width;
+            }
+            // keep mid-anchored texts glued to the body's center as it widens
+            if (node.name === 'text' &&
+                node.attr['s:attribute'] &&
+                node.attr['text-anchor'] === 'middle') {
+                node.attr.x = width / 2;
             }
         },
     });

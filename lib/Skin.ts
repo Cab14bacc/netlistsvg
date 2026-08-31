@@ -130,5 +130,24 @@ export namespace Skin {
 
         return vals;
     }
+
+    // Per-character text metrics for the skin's label font, read from
+    // <s:properties fontCharWidth="6" fontCharHeight="11"/> with defaults
+    // matching 10px Courier New (0.6 em advance, ~1.1 em line height).
+    export function getFontCharWidth(): number {
+        const v = getProperties().fontCharWidth;
+        return typeof v === 'number' ? v : 6;
+    }
+
+    export function getFontCharHeight(): number {
+        const v = getProperties().fontCharHeight;
+        return typeof v === 'number' ? v : 11;
+    }
+
+    // // Baseline-to-top gap for the skin's label font (~0.8em ascent).
+    // export function getFontAscent(): number {
+    //     const v = getProperties().fontAscent;
+    //     return typeof v === 'number' ? v : 8;
+    // }
 }
 export default Skin;

@@ -126,5 +126,23 @@ var Skin;
         return vals;
     }
     Skin.getProperties = getProperties;
+    // Per-character text metrics for the skin's label font, read from
+    // <s:properties fontCharWidth="6" fontCharHeight="11"/> with defaults
+    // matching 10px Courier New (0.6 em advance, ~1.1 em line height).
+    function getFontCharWidth() {
+        var v = getProperties().fontCharWidth;
+        return typeof v === 'number' ? v : 6;
+    }
+    Skin.getFontCharWidth = getFontCharWidth;
+    function getFontCharHeight() {
+        var v = getProperties().fontCharHeight;
+        return typeof v === 'number' ? v : 11;
+    }
+    Skin.getFontCharHeight = getFontCharHeight;
+    // // Baseline-to-top gap for the skin's label font (~0.8em ascent).
+    // export function getFontAscent(): number {
+    //     const v = getProperties().fontAscent;
+    //     return typeof v === 'number' ? v : 8;
+    // }
 })(Skin = exports.Skin || (exports.Skin = {}));
 exports.default = Skin;

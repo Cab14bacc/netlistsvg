@@ -1,5 +1,6 @@
 import Cell from './Cell';
 import {SigsByConstName} from './FlatModule';
+import Skin from './Skin';
 import Yosys from './YosysModel';
 import _ = require('lodash');
 import { ElkModel } from './elkGraph';
@@ -75,12 +76,20 @@ export class Port {
     ): ElkModel.Port {
         const nkey = this.parentNode.Key;
         const type = this.parentNode.getTemplate()[1]['s:type'];
+        // estimated width (in ELK units) of the cell's "value" label,
+        // using the skin's 6-units-per-character assumption at 10px
+        const originalWidth = Number(this.parentNode.getTemplate()[1]['s:width']);
+        const templateX = Number(templatePorts[0][1]['s:x']);
+        const pos = templatePorts[0][1]['s:position'];
+        const isLeft = pos === 'left' || (pos === undefined && templateX < Number(originalWidth) / 2);
+        let newX = isLeft ? 0 : this.parentNode.getGenericWidth();
+        
         if (index === 0) {
             const ret: ElkModel.Port = {
                 id: nkey + '.' + this.key,
                 width: 1,
                 height: 1,
-                x: Number(templatePorts[0][1]['s:x']),
+                x: newX,
                 y: Number(templatePorts[0][1]['s:y']),
             };
 
@@ -90,8 +99,8 @@ export class Port {
                     text: this.key,
                     x: Number(templatePorts[0][2][1].x) - 10,
                     y: Number(templatePorts[0][2][1].y) - 6,
-                    width: (6 * this.key.length),
-                    height: 11,
+                    height: Skin.getFontCharHeight(),
+                    width: (Skin.getFontCharWidth() * this.key.length),
                 }];
             }
 
@@ -99,10 +108,10 @@ export class Port {
                 ret.labels = [{
                     id: nkey + '.' + this.key + '.label',
                     text: this.key,
-                    x: Number(templatePorts[0][2][1].x) - 10,
+                    x: Number(templatePorts[0][2][1].x) + 10,
                     y: Number(templatePorts[0][2][1].y) - 6,
-                    width: (6 * this.key.length),
-                    height: 11,
+                    width: (Skin.getFontCharWidth() * this.key.length),
+                    height: Skin.getFontCharHeight(),
                 }];
             }
             return ret;
@@ -112,17 +121,17 @@ export class Port {
                 id: nkey + '.' + this.key,
                 width: 1,
                 height: 1,
-                x: Number(templatePorts[0][1]['s:x']),
+                x: newX,
                 y: (index) * gap + Number(templatePorts[0][1]['s:y']),
             };
             if (type === 'generic') {
                 ret.labels = [{
                     id: nkey + '.' + this.key + '.label',
                     text: this.key,
-                    x: Number(templatePorts[0][2][1].x) - 10,
+                    x: Number(templatePorts[0][2][1].x) + 10,
                     y: Number(templatePorts[0][2][1].y) - 6,
-                    width: (6 * this.key.length),
-                    height: 11,
+                    width: (Skin.getFontCharWidth() * this.key.length),
+                    height: Skin.getFontCharHeight(),
                 }];
             }
             return ret;

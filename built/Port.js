@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Port = void 0;
 var Cell_1 = require("./Cell");
+var Skin_1 = require("./Skin");
 var _ = require("lodash");
 var Port = /** @class */ (function () {
     function Port(key, value) {
@@ -54,12 +55,19 @@ var Port = /** @class */ (function () {
     Port.prototype.getGenericElkPort = function (index, templatePorts, dir) {
         var nkey = this.parentNode.Key;
         var type = this.parentNode.getTemplate()[1]['s:type'];
+        // estimated width (in ELK units) of the cell's "value" label,
+        // using the skin's 6-units-per-character assumption at 10px
+        var originalWidth = Number(this.parentNode.getTemplate()[1]['s:width']);
+        var templateX = Number(templatePorts[0][1]['s:x']);
+        var pos = templatePorts[0][1]['s:position'];
+        var isLeft = pos === 'left' || (pos === undefined && templateX < Number(originalWidth) / 2);
+        var newX = isLeft ? 0 : this.parentNode.getGenericWidth();
         if (index === 0) {
             var ret = {
                 id: nkey + '.' + this.key,
                 width: 1,
                 height: 1,
-                x: Number(templatePorts[0][1]['s:x']),
+                x: newX,
                 y: Number(templatePorts[0][1]['s:y']),
             };
             if ((type === 'generic' || type === 'join') && dir === 'in') {
@@ -68,18 +76,18 @@ var Port = /** @class */ (function () {
                         text: this.key,
                         x: Number(templatePorts[0][2][1].x) - 10,
                         y: Number(templatePorts[0][2][1].y) - 6,
-                        width: (6 * this.key.length),
-                        height: 11,
+                        height: Skin_1.default.getFontCharHeight(),
+                        width: (Skin_1.default.getFontCharWidth() * this.key.length),
                     }];
             }
             if ((type === 'generic' || type === 'split') && dir === 'out') {
                 ret.labels = [{
                         id: nkey + '.' + this.key + '.label',
                         text: this.key,
-                        x: Number(templatePorts[0][2][1].x) - 10,
+                        x: Number(templatePorts[0][2][1].x) + 10,
                         y: Number(templatePorts[0][2][1].y) - 6,
-                        width: (6 * this.key.length),
-                        height: 11,
+                        width: (Skin_1.default.getFontCharWidth() * this.key.length),
+                        height: Skin_1.default.getFontCharHeight(),
                     }];
             }
             return ret;
@@ -90,17 +98,17 @@ var Port = /** @class */ (function () {
                 id: nkey + '.' + this.key,
                 width: 1,
                 height: 1,
-                x: Number(templatePorts[0][1]['s:x']),
+                x: newX,
                 y: (index) * gap + Number(templatePorts[0][1]['s:y']),
             };
             if (type === 'generic') {
                 ret.labels = [{
                         id: nkey + '.' + this.key + '.label',
                         text: this.key,
-                        x: Number(templatePorts[0][2][1].x) - 10,
+                        x: Number(templatePorts[0][2][1].x) + 10,
                         y: Number(templatePorts[0][2][1].y) - 6,
-                        width: (6 * this.key.length),
-                        height: 11,
+                        width: (Skin_1.default.getFontCharWidth() * this.key.length),
+                        height: Skin_1.default.getFontCharHeight(),
                     }];
             }
             return ret;
