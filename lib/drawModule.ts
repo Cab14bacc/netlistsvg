@@ -17,10 +17,12 @@ export default function drawModule(g: ElkModel.Graph, module: FlatModule) {
         return n.render(kchild);
     });
     removeDummyEdges(g);
+    // wire stroke width, from the skin's <s:properties wireStrokeWidth="..."/>.
+    const wireWidth = Skin.getWireStrokeWidth();
     let lines: onml.Element[] = _.flatMap(g.edges, (e: ElkModel.Edge) => {
         const netId = ElkModel.wireNameLookup[e.id];
         const numWires = netId.split(',').length - 2;
-        const lineStyle = 'stroke-width: ' + (numWires > 1 ? 2 : 1);
+        const lineStyle = 'stroke-width: ' + wireStrokeWidth(wireWidth, numWires);
         const netName = 'net_' + netId.slice(1, netId.length - 1) + ' width_' + numWires;
         return _.flatMap(e.sections, (s: ElkModel.Section) => {
             let startPoint = s.startPoint;
@@ -42,7 +44,7 @@ export default function drawModule(g: ElkModel.Graph, module: FlatModule) {
                     ['circle', {
                         cx: j.x,
                         cy: j.y,
-                        r: (numWires > 1 ? 3 : 2),
+                        r: wireStrokeWidth(wireWidth, numWires) * 1.5,
                         style: 'fill:#000',
                         class: netName,
                     }]);
@@ -235,4 +237,14 @@ export function removeDummyEdges(g: ElkModel.Graph) {
         }
         dummyNum += 1;
     }
+}
+
+/**
+ * Effective stroke width for a wire: the skin-configured wire width, kept
+ * proportionally thicker for multi-wire (bus) nets so buses read heavier.
+ * Single wire: exactly the configured width (matches component leads);
+ * buses: doubled, mirroring the old 1/2 behavior.
+ */
+function wireStrokeWidth(base: number, numWires: number): number {
+    return numWires > 1 ? base * 2 : base;
 }

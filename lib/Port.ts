@@ -83,7 +83,34 @@ export class Port {
         const pos = templatePorts[0][1]['s:position'];
         const isLeft = pos === 'left' || (pos === undefined && templateX < Number(originalWidth) / 2);
         let newX = isLeft ? 0 : this.parentNode.getGenericWidth();
-        
+        const displayKey = this.key;
+        const textW = Skin.getFontCharWidth() * displayKey.length;
+        const textH = Skin.getFontCharHeight();
+        // template text node of the exemplar pin: x/y + anchors. The box is
+        // computed anchor/baseline-aware so it matches the rendered glyphs
+        // (in-ports are end-anchored: text extends LEFT of x).
+        const textNode = templatePorts[0][2][1];
+        const textAnchor = textNode['text-anchor'] ?? 'start';
+        let labelX = Number(textNode.x);
+        if (textAnchor === 'end') {
+            labelX -= textW;
+        } else if (textAnchor === 'middle') {
+            labelX -= textW / 2;
+        }
+        // assume no dominant-baseline on port texts => baseline semantics: top = y - h
+        const labelY = Number(textNode.y) - textH;
+
+        function portLabel(): ElkModel.Label {
+            return {
+                id: nkey + '.' + this.key + '.label',
+                text: displayKey,
+                x: labelX,
+                y: labelY,
+                width: textW,
+                height: textH,
+            };
+        }
+
         if (index === 0) {
             const ret: ElkModel.Port = {
                 id: nkey + '.' + this.key,
@@ -94,25 +121,11 @@ export class Port {
             };
 
             if ((type === 'generic' || type === 'join') && dir === 'in') {
-                ret.labels = [{
-                    id: nkey + '.' + this.key + '.label',
-                    text: this.key,
-                    x: Number(templatePorts[0][2][1].x) - 10,
-                    y: Number(templatePorts[0][2][1].y) - 6,
-                    height: Skin.getFontCharHeight(),
-                    width: (Skin.getFontCharWidth() * this.key.length),
-                }];
+                ret.labels = [portLabel.call(this)];
             }
 
             if ((type === 'generic' || type === 'split') && dir === 'out') {
-                ret.labels = [{
-                    id: nkey + '.' + this.key + '.label',
-                    text: this.key,
-                    x: Number(templatePorts[0][2][1].x) + 10,
-                    y: Number(templatePorts[0][2][1].y) - 6,
-                    width: (Skin.getFontCharWidth() * this.key.length),
-                    height: Skin.getFontCharHeight(),
-                }];
+                ret.labels = [portLabel.call(this)];
             }
             return ret;
         } else {
@@ -125,14 +138,7 @@ export class Port {
                 y: (index) * gap + Number(templatePorts[0][1]['s:y']),
             };
             if (type === 'generic') {
-                ret.labels = [{
-                    id: nkey + '.' + this.key + '.label',
-                    text: this.key,
-                    x: Number(templatePorts[0][2][1].x) + 10,
-                    y: Number(templatePorts[0][2][1].y) - 6,
-                    width: (Skin.getFontCharWidth() * this.key.length),
-                    height: Skin.getFontCharHeight(),
-                }];
+                ret.labels = [portLabel.call(this)];
             }
             return ret;
         }

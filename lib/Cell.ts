@@ -357,26 +357,49 @@ export default class Cell {
     private svgTextToElkBox (
         textX: number, textY: number, 
         textAnchor: string, dominantBaseline: string, 
-        text: string, ifGeneric: boolean = false): { x: number, y: number, width: number, height: number } {
+        text: string, ifGeneric: boolean = false,
+        attrName: string = ''): { x: number, y: number, width: number, height: number } {
         
-        const w: number = Skin.getFontCharWidth() * text.length ;
+        const w: number = Skin.getFontCharWidth() * text.length;
         const h: number = Skin.getFontCharHeight();
 
-        // if generic, the anchor is always in the center
+        // Generic cells re-center their middle-anchored texts horizontally
+        // when the body widens (setGenericSize), so anchor X at the body
+        // center. For Y: the ref label sits above the body (template y<0)
+        // and keeps its template position, while the value label lives
+        // inside the body and is vertically centered in it (matching
+        // setGenericSize's render behavior).
         let elkAnchorX: number = ifGeneric ? this.getGenericWidth() / 2: textX;
-        let elkAnchorY: number = ifGeneric ? this.getGenericHeight() / 2: textY;
-
+        let elkAnchorY: number = textY;
+        if (ifGeneric && attrName === 'value') {
+            elkAnchorY = this.getGenericHeight() / 2;
+        }
         if (textAnchor === 'middle') {
             elkAnchorX = elkAnchorX - w / 2;
         } else if (textAnchor === 'end') {
             elkAnchorX = elkAnchorX - w;
         }
 
-        if (dominantBaseline === 'middle') {
+        // Map the SVG text alignment point (textY) to the top edge of the
+        // label box, per dominant-baseline. 
+        //  - 'hanging'  => box = [y, y + h]: ink hangs from the box top;
+        //                 tails stay inside (caps ~0.65h, tails reach ~0.8h)
+        //  - 'middle'   => box = [y - h/2, y + h/2]: cap ink centers just
+        //                 above the em center; tails stay inside the lower
+        //                 half, so no shift
+        //  - otherwise  ('alphabetic' | 'baseline' | 'auto') => the point is
+        //    the baseline = the bottom of non-descender glyphs. A box ending
+        //    there would clip the tails of y/g/j/p/q, so shift the box down
+        //    by a descender offset.
+        const DESC_SHIFT = h * Skin.getFontDescShift();
+        if (dominantBaseline === 'hanging') {
+            elkAnchorY = elkAnchorY;
+        }
+        else if (dominantBaseline === 'middle') {
             elkAnchorY = elkAnchorY - h / 2;
         }
-        else if (dominantBaseline === 'alphabetic' || dominantBaseline === 'auto') {
-            elkAnchorY = elkAnchorY - h;
+        else {
+            elkAnchorY = elkAnchorY - h + DESC_SHIFT;
         }
 
         return {x: elkAnchorX, y: elkAnchorY, width: w, height: h};
@@ -408,7 +431,7 @@ export default class Cell {
                     const textAnchor = node.attr['text-anchor'] ?? 'start';
                     const dominantBaseline = node.attr['dominant-baseline'] ?? 'auto';
                     const ifGeneric = template[1]['s:type'] === 'generic';
-                    const {x, y, width, height} = this.svgTextToElkBox(textX, textY, textAnchor, dominantBaseline, newString, ifGeneric);
+                    const {x, y, width, height} = this.svgTextToElkBox(textX, textY, textAnchor, dominantBaseline, newString, ifGeneric, attrName);
 
                     // const boxTop = Number(node.attr.y) - 8;
 
@@ -480,6 +503,14 @@ function setGenericSize(tempclone, width, height) {
                 node.attr['s:attribute'] &&
                 node.attr['text-anchor'] === 'middle') {
                 node.attr.x = width / 2;
+            }
+
+            // the value text lives inside the body: keep it vertically
+            // centered as the body grows (the ref text above stays put)
+            if (node.name === 'text' &&
+                node.attr['s:attribute'] === 'value' &&
+                node.attr['dominant-baseline'] === 'middle') {
+                node.attr.y = height / 2;
             }
         },
     });

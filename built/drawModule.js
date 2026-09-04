@@ -25,10 +25,12 @@ function drawModule(g, module) {
         return n.render(kchild);
     });
     removeDummyEdges(g);
+    // wire stroke width, from the skin's <s:properties wireStrokeWidth="..."/>.
+    var wireWidth = Skin_1.default.getWireStrokeWidth();
     var lines = _.flatMap(g.edges, function (e) {
         var netId = elkGraph_1.ElkModel.wireNameLookup[e.id];
         var numWires = netId.split(',').length - 2;
-        var lineStyle = 'stroke-width: ' + (numWires > 1 ? 2 : 1);
+        var lineStyle = 'stroke-width: ' + wireStrokeWidth(wireWidth, numWires);
         var netName = 'net_' + netId.slice(1, netId.length - 1) + ' width_' + numWires;
         return _.flatMap(e.sections, function (s) {
             var startPoint = s.startPoint;
@@ -50,7 +52,7 @@ function drawModule(g, module) {
                     return ['circle', {
                             cx: j.x,
                             cy: j.y,
-                            r: (numWires > 1 ? 3 : 2),
+                            r: wireStrokeWidth(wireWidth, numWires) * 1.5,
                             style: 'fill:#000',
                             class: netName,
                         }];
@@ -251,3 +253,12 @@ function removeDummyEdges(g) {
     }
 }
 exports.removeDummyEdges = removeDummyEdges;
+/**
+ * Effective stroke width for a wire: the skin-configured wire width, kept
+ * proportionally thicker for multi-wire (bus) nets so buses read heavier.
+ * Single wire: exactly the configured width (matches component leads);
+ * buses: doubled, mirroring the old 1/2 behavior.
+ */
+function wireStrokeWidth(base, numWires) {
+    return numWires > 1 ? base * 2 : base;
+}

@@ -132,8 +132,8 @@ export namespace Skin {
     }
 
     // Per-character text metrics for the skin's label font, read from
-    // <s:properties fontCharWidth="6" fontCharHeight="11"/> with defaults
-    // matching 10px Courier New (0.6 em advance, ~1.1 em line height).
+    // <s:properties fontCharWidth="6" fontCharHeight="11"/>.
+    // (0.6 em advance, ~1.1 em line height).
     export function getFontCharWidth(): number {
         const v = getProperties().fontCharWidth;
         return typeof v === 'number' ? v : 6;
@@ -144,10 +144,21 @@ export namespace Skin {
         return typeof v === 'number' ? v : 11;
     }
 
-    // // Baseline-to-top gap for the skin's label font (~0.8em ascent).
-    // export function getFontAscent(): number {
-    //     const v = getProperties().fontAscent;
-    //     return typeof v === 'number' ? v : 8;
-    // }
+    // Descender allowance for baseline-anchored label boxes, read from
+    // <s:properties fontDescShift="..."/> as a fraction of the box height.
+    // Chars like y/g/j/p/q paint below the baseline; baseline boxes are
+    // shifted down by height * descShift so tails stay inside. Defaults to
+    // 0.3 for older skins without the attribute.
+    export function getFontDescShift(): number {
+        const v = getProperties().fontDescShift;
+        return typeof v === 'number' ? v : 0.3;
+    }
+
+    // Stroke width (in SVG units) of the wires drawn between components,
+    // read from <s:properties wireStrokeWidth="..."/>. 
+    export function getWireStrokeWidth(): number {
+        const v = getProperties().wireStrokeWidth;
+        return typeof v === 'number' ? v : 1;
+    }
 }
 export default Skin;
