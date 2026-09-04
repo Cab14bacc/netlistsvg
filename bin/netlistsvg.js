@@ -88,7 +88,7 @@ function main(netlistPath, outputPath, skinPath, elkJsonPath, annotationPath, sc
         if (annotationPath || outputFormat !== 'svg') {
             lib.renderWithAnnotations(skinData, netlistJson, outputFormat,
                 { scale: scale, quality: quality },
-                elkData, path.basename(netlistPath), classesData).then((result) => {
+                elkData, path.basename(outputPath), classesData).then((result) => {
                 if (annotationPath) {
                     fs.writeFileSync(annotationPath, JSON.stringify(result.annotations, null, 2), 'utf-8');
                 }
